@@ -13,9 +13,9 @@ intents.message_content = True
 ## Logging
 import logging
 import logging.handlers
-logger = logging.getLogger('discord.http')
+logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.DEBUG)
+logging.getLogger('discord.http').setLevel(logging.INFO)
 
 logHandler = logging.handlers.RotatingFileHandler(
         filename='discord.log',
@@ -37,7 +37,7 @@ logger.addHandler(logHandler)
 ## Bot
 import discord
 from discord.ext import commands
-bot = commands.Bot(command_prefix='/', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 import TAManager
 @bot.event
