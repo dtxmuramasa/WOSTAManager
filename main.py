@@ -13,9 +13,9 @@ intents.message_content = True
 ## Logging
 import logging
 import logging.handlers
-logger = logging.getLogger('discord')
+logger = logging.getLogger('discord.http')
 logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.WARNING)
+logging.getLogger('discord.http').setLevel(logging.DEBUG)
 
 logHandler = logging.handlers.RotatingFileHandler(
         filename='discord.log',
@@ -42,7 +42,7 @@ bot = commands.Bot(command_prefix='/', intents=intents)
 import TAManager
 @bot.event
 async def setup_hook():
-    await bot.add_cog(TAManager.TAManagerCog(bot))
+    await bot.add_cog(TAManager.TAManagerCog(bot, logger))
     await bot.tree.sync()
 
 @bot.event
