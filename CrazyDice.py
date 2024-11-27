@@ -31,12 +31,23 @@ class CrazyDiceCog(commands.Cog):
     @app_commands.command()
     async def dice_roll(self, ctx):
         channel = self.bot.get_channel(ctx.channel_id)
+        # 1/32の確率でサイコロの呪いを受ける
+        if(not(str(ctx.user.id) in self.fixed_dices.keys()) and random.randint(0, 32) % 32 == 0):
+            self.fixed_dices[str(ctx.user.id)] = random.randint(1, 6)
+            self.logger.info(f'[dice_roll 呪い: {self.fixed_dices[str(ctx.user.id)]} > {ctx.user.display_name}({ctx.user.id})] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id})')
+            await channel.send(f'【{ctx.user.display_name}】がサイコロの呪いを受けました！！')
+        
+        # サイコロを振る(呪われていたら固定の数字になる)
         dice = self.fixed_dices.get(str(ctx.user.id), random.randint(1, 6))
+        
+        # 1/2の確率で芸人サイコロを使う
         if(str(ctx.user.id) in self.fixed_dices.keys() and random.randint(1, 6) >= 4):
-            crazy_dice = [0, 7, 100, '勝ち', '負け', 'ここで一発芸！皆がウケたら勝ち！', CrazyDiceCog.strCancelChallenge]
+            crazy_dice = [0, 7, 100, '勝ち', '勝ち？ｗ', '負け', '圧倒的負け', '『恋の話』、恋バナ～ｗｗｗ', 'ここで一発芸！皆がウケたら勝ち！', CrazyDiceCog.strCancelChallenge]
             dice = crazy_dice[random.randrange(len(crazy_dice))]
+            # 1/10の確率でサイコロの解呪チャレンジ
             if(dice == CrazyDiceCog.strCancelChallenge):
-                if(random.randint(1, 6) >= 5):
+                # 1/6の確率で解呪成功
+                if(random.randint(1, 6 - self.fixed_dices[str(ctx.user.id)] + 1) % (6 - self.fixed_dices[str(ctx.user.id)] + 1) == 0):
                     self.fixed_dices.pop(str(ctx.user.id))
                     dice = dice + '成功！！！！'
                     await channel.send(f'【{ctx.user.display_name}】がサイコロの呪いを解除しました！！')
