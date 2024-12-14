@@ -34,6 +34,11 @@ logHandler.setFormatter(logFormatter)
 logger.addHandler(logHandler)
 
 
+## Database
+import TADB
+tadb = TADB.TADatabase(logger)
+
+
 ## Bot
 import discord
 from discord.ext import commands
@@ -44,7 +49,7 @@ import CrazyDice
 from ViewTest import ViewTestCog
 @bot.event
 async def setup_hook():
-    await bot.add_cog(TAManager.TAManagerCog(bot, logger))
+    await bot.add_cog(TAManager.TAManagerCog(bot, tadb, logger))
     await bot.add_cog(CrazyDice.CrazyDiceCog(bot, logger))
     await bot.add_cog(ViewTestCog(bot, logger))
     await bot.tree.sync()

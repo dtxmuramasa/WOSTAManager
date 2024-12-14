@@ -3,12 +3,14 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
 import logging
+import TADB
 
 
 class TAManagerCog(commands.Cog):
-    def __init__(self, bot: commands.Bot, logger: logging.Logger):
+    def __init__(self, bot: commands.Bot, tadb: TADB.TADatabase, logger: logging.Logger):
         self.bot = bot
         self.logger = logger
+        self.tadb = tadb
         self.ta_list = {}
         self.used_ta_id_list = []
     
@@ -42,10 +44,13 @@ class TAManagerCog(commands.Cog):
         channel = self.bot.get_channel(ctx.channel_id)
         totalSeconds = self.convert2seconds(time)
         newId = self.used_ta_id_list[-1] + 1 if (len(self.used_ta_id_list) > 0) else 0
+        self.tadb.set(f'{newId}:{ctx.user.id}', totalSeconds)
         self.ta_list[newId] = {ctx.user.id: totalSeconds}
         self.used_ta_id_list.append(newId)
         self.logger.info(f'[ta_create](TAID: {newId}) called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - time: {time}')
-        await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました')
+        view = TAManager_JoinButtonView(timeout=180, logger=self.logger, taManager=self, taid=newId)
+        await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました', view=view)
+        # await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました')
 
 
     @app_commands.command()
@@ -98,3 +103,20 @@ class TAManagerCog(commands.Cog):
         self.logger.info(self.ta_list[ta_id])
         del self.ta_list[ta_id]
         self.logger.info(f'[ta_decide - finalize:1] TAID: {ta_id} is deleted')
+
+
+class TAManager_JoinButtonView(discord.ui.View):
+    def __init__(self, *, timeout: float | None = 180,
+                    logger: logging.Logger, taManager: TAManagerCog, taid: int):
+        super().__init__(timeout=timeout)
+        self.logger = logging.getLogger('discord')
+        self.taManager = taManager
+        self.taid = taid
+    
+    @discord.ui.button(label='TAに参加(機能実装中)', style=discord.ButtonStyle.success)
+    async def join_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.logger.info(f'[join_button] called by {interaction.user.display_name}({interaction.user.id})')
+        await self.taManager.ta_join(interaction, self.taid, 0)
+        await interaction.response.send_message('Button clicked!', ephemeral=True)
+
+
