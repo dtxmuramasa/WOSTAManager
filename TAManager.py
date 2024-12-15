@@ -9,10 +9,8 @@ import TADB
 class TAManagerCog(commands.Cog):
     def __init__(self, bot: commands.Bot, tadb: TADB.TADatabase, logger: logging.Logger):
         self.bot = bot
-        self.logger = logger
         self.tadb = tadb
-        self.ta_list = {}
-        self.used_ta_id_list = []
+        self.logger = logger
     
     def convert2seconds(self, time: int):
         minutes = (time - (time % 100)) / 100
@@ -43,10 +41,7 @@ class TAManagerCog(commands.Cog):
     async def ta_create(self, ctx, time: int):
         channel = self.bot.get_channel(ctx.channel_id)
         totalSeconds = self.convert2seconds(time)
-        newId = self.used_ta_id_list[-1] + 1 if (len(self.used_ta_id_list) > 0) else 0
-        self.tadb.set(f'{newId}:{ctx.user.id}', totalSeconds)
-        self.ta_list[newId] = {ctx.user.id: totalSeconds}
-        self.used_ta_id_list.append(newId)
+        newId = self.tadb.CreateTA(ctx.guild.id, ctx.channel_id, ctx.user.id, totalSeconds)
         self.logger.info(f'[ta_create](TAID: {newId}) called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - time: {time}')
         view = TAManager_JoinButtonView(timeout=180, logger=self.logger, taManager=self, taid=newId)
         await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました', view=view)
@@ -56,14 +51,12 @@ class TAManagerCog(commands.Cog):
     @app_commands.command()
     async def ta_join(self, ctx, ta_id: int, time: int):
         channel = self.bot.get_channel(ctx.channel_id)
-
-        ta = self.ta_list.get(ta_id, None)
-        if ta is None:
+        if self.tadb.IsExistTA(ta_id) is None:
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.ta_list[ta_id][ctx.user.id] = self.convert2seconds(time)
+        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, ctx.user.id, self.convert2seconds(time))
         self.logger.info(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, time: {time}')
         await ctx.response.send_message(f'【TA参加】{ctx.user.display_name} が TAID: {ta_id} に参加しました')
 
@@ -71,18 +64,18 @@ class TAManagerCog(commands.Cog):
     @app_commands.command()
     async def ta_decide(self, ctx, ta_id: int, start_time: int):
         channel = self.bot.get_channel(ctx.channel_id)
-        
-        ta = self.ta_list.get(ta_id, None)
-        if ta is None:
+
+        if self.tadb.IsExistTA(ta_id) is None:
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
-        
+                
         start_time = f'{str(int(start_time / 100)).zfill(2)}:{str(int(start_time % 100)).zfill(2)}:00'
         start_utc = datetime.strptime(start_time, '%H:%M:%S')
         starter_start_utc = start_utc.strftime('%H:%M:%S')
         
-        sorted_ta = sorted(self.ta_list[ta_id].items(), key = lambda x: x[1], reverse=True)
+        ta = self.tadb.CloseTA(ta_id)
+        sorted_ta = sorted(ta.items(), key = lambda x: x[1], reverse=True)
         starter = sorted_ta.pop(0)
 
         self.logger.info(f'[ta_decide] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, start_time: {start_time}')
@@ -98,11 +91,7 @@ class TAManagerCog(commands.Cog):
             await channel.send(f'【TAID: {ta_id} - 参加者】{user_mention_name} **{joiner_start_utc} スタート** (元の行軍時間: {time} 秒)', allowed_mentions=discord.AllowedMentions.all(), mention_author=True)
         
         await ctx.response.send_message(f'【TAクローズ】TAID: {ta_id} が {ctx.user.display_name} によってクローズされました')
-        
-        self.logger.info(f'[ta_decide - finalize:0] TAID: {ta_id} is finalize')
-        self.logger.info(self.ta_list[ta_id])
-        del self.ta_list[ta_id]
-        self.logger.info(f'[ta_decide - finalize:1] TAID: {ta_id} is deleted')
+        self.logger.info(f'[ta_decide - finalize:0] TAID: {ta_id} is finalized')
 
 
 class TAManager_JoinButtonView(discord.ui.View):
@@ -118,5 +107,3 @@ class TAManager_JoinButtonView(discord.ui.View):
         self.logger.info(f'[join_button] called by {interaction.user.display_name}({interaction.user.id})')
         await self.taManager.ta_join(interaction, self.taid, 0)
         await interaction.response.send_message('Button clicked!', ephemeral=True)
-
-
