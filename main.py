@@ -46,11 +46,15 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 import TAManager
 import CrazyDice
+import Omikuji
+import VCSupport
 from ViewTest import ViewTestCog
 @bot.event
 async def setup_hook():
     await bot.add_cog(TAManager.TAManagerCog(bot, tadb, logger))
     await bot.add_cog(CrazyDice.CrazyDiceCog(bot, logger))
+    await bot.add_cog(VCSupport.VCSupportCog(bot, logger))
+    await bot.add_cog(Omikuji.OmikujiCog(bot, logger))
     await bot.add_cog(ViewTestCog(bot, logger))
     await bot.tree.sync()
 
