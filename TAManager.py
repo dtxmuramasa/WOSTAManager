@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 import logging
 import TADB
+import NormalizedWoSTime
 
 
 class TAManagerCog(commands.Cog):
@@ -38,41 +39,41 @@ class TAManagerCog(commands.Cog):
         await ctx.response.send_message(f'【{ctx.user.display_name}】誤差: {offset} 秒')
     
     @app_commands.command()
-    async def ta_create(self, ctx, time: int):
+    async def ta_create(self, ctx, time: str):
         channel = self.bot.get_channel(ctx.channel_id)
-        totalSeconds = self.convert2seconds(time)
-        newId = self.tadb.CreateTA(ctx.guild.id, ctx.channel_id, ctx.user.id, totalSeconds)
+        normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(time, self.logger)
+        newId = self.tadb.CreateTA(ctx.guild.id, ctx.channel_id, ctx.user.id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_create](TAID: {newId}) called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - time: {time}')
-        view = TAManager_JoinButtonView(timeout=180, logger=self.logger, taManager=self, taid=newId)
-        await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました', view=view)
-        # await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました')
+        # view = TAManager_JoinButtonView(timeout=180, logger=self.logger, taManager=self, taid=newId)
+        # await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました', view=view)
+        await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました')
 
 
     @app_commands.command()
-    async def ta_join(self, ctx, ta_id: int, time: int):
+    async def ta_join(self, ctx, ta_id: int, time: str):
         channel = self.bot.get_channel(ctx.channel_id)
+        normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(time, self.logger)
         if self.tadb.IsExistTA(ta_id) is None:
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, ctx.user.id, self.convert2seconds(time))
+        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, ctx.user.id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, time: {time}')
         await ctx.response.send_message(f'【TA参加】{ctx.user.display_name} が TAID: {ta_id} に参加しました')
 
     
     @app_commands.command()
-    async def ta_decide(self, ctx, ta_id: int, start_time: int):
+    async def ta_decide(self, ctx, ta_id: int, start_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
 
         if self.tadb.IsExistTA(ta_id) is None:
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
-                
-        start_time = f'{str(int(start_time / 100)).zfill(2)}:{str(int(start_time % 100)).zfill(2)}:00'
-        start_utc = datetime.strptime(start_time, '%H:%M:%S')
-        starter_start_utc = start_utc.strftime('%H:%M:%S')
+
+        normalizedStartTime = NormalizedWoSTime.CreateNormalizedWoSTime(start_time, self.logger)
+        starter_start_utc = normalizedStartTime.getFullUTCFormat()
         
         ta = self.tadb.CloseTA(ta_id)
         sorted_ta = sorted(ta.items(), key = lambda x: x[1], reverse=True)
@@ -82,13 +83,14 @@ class TAManagerCog(commands.Cog):
         self.logger.info(f'[ta_decide - TAID: {ta_id} starter] {self.getUserDisplayName(starter[0])}({starter[0]}) march_time: {starter[1]} sec, start at {starter_start_utc}')
         await channel.send(f'【TAID: {ta_id} - スターター】{self.getMentionName(starter[0])} **{starter_start_utc} スタート** 行軍時間: {starter[1]} 秒', allowed_mentions=discord.AllowedMentions.all(), mention_author=True)
         
-        for user_id, time in sorted_ta:
+        for user_id, march_time in sorted_ta:
             user_mention_name = self.getMentionName(user_id)
             user_display_name = self.getUserDisplayName(user_id)
-            td = timedelta(seconds=starter[1] - time)
-            joiner_start_utc = (start_utc + td).strftime('%H:%M:%S')
-            self.logger.info(f'[ta_decide - TAID: {ta_id} joiner] {user_display_name}({user_id}) march_time: {time} sec, start at {joiner_start_utc}')
-            await channel.send(f'【TAID: {ta_id} - 参加者】{user_mention_name} **{joiner_start_utc} スタート** (元の行軍時間: {time} 秒)', allowed_mentions=discord.AllowedMentions.all(), mention_author=True)
+            joiner_offset_time = NormalizedWoSTime.CreateNormalizedWoSTimeFromSeconds(starter[1] - march_time, self.logger)
+            joiner_start_time = normalizedStartTime + joiner_offset_time
+            joiner_start_utc = joiner_start_time.getFullUTCFormat()
+            self.logger.info(f'[ta_decide - TAID: {ta_id} joiner] {user_display_name}({user_id}) march_time: {march_time} sec, start at {joiner_start_utc}')
+            await channel.send(f'【TAID: {ta_id} - 参加者】{user_mention_name} **{joiner_start_utc} スタート** (元の行軍時間: {march_time} 秒)', allowed_mentions=discord.AllowedMentions.all(), mention_author=True)
         
         await ctx.response.send_message(f'【TAクローズ】TAID: {ta_id} が {ctx.user.display_name} によってクローズされました')
         self.logger.info(f'[ta_decide - finalize:0] TAID: {ta_id} is finalized')
