@@ -13,10 +13,6 @@ class TAManagerCog(commands.Cog):
         self.tadb = tadb
         self.logger = logger
     
-    def convert2seconds(self, time: int):
-        minutes = (time - (time % 100)) / 100
-        return int(minutes * 60 + time % 100)
-    
     def getMentionName(self, user_id: str):
         user = self.bot.get_user(user_id)
         return user.mention
@@ -29,14 +25,31 @@ class TAManagerCog(commands.Cog):
     async def on_ready(self):
         self.logger.info('TAManagerCog is ready')
 
+
     @app_commands.command()
-    async def ta_calc_offset(self, ctx, starter_time: int, self_time: int):
+    async def calc_offset(self, ctx, a_time: str, b_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
-        starter_totalSeconds = self.convert2seconds(starter_time)
-        self_totalSeconds = self.convert2seconds(self_time)
-        offset = int(self_totalSeconds - starter_totalSeconds)
-        self.logger.info(f'[ta_calc_offset] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - starter_time: {starter_time}, self_time: {self_time}')
-        await ctx.response.send_message(f'【{ctx.user.display_name}】誤差: {offset} 秒')
+        a = NormalizedWoSTime.CreateNormalizedWoSTime(a_time)
+        b = NormalizedWoSTime.CreateNormalizedWoSTime(b_time)
+        if a.convertToSeconds() >= b.convertToSeconds():
+            offset_seconds = (a - b).convertToSeconds()
+            self.logger.info(f'[ta_calc_offset] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - A: {a_time}, B: {b_time} -> offset_seconds: {offset_seconds}')
+            await ctx.response.send_message(f'【{ctx.user.display_name}】A[{a.getFullUTCFormat()}] - B[{b.getFullUTCFormat()}] -> 誤差: {offset_seconds} 秒')
+        else:
+            offset_seconds = (b - a).convertToSeconds()
+            self.logger.info(f'[ta_calc_offset] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - B: {b_time}, A: {a_time} -> offset_seconds: {offset_seconds}')
+            await ctx.response.send_message(f'【{ctx.user.display_name}】B[{b.getFullUTCFormat()}] - A[{a.getFullUTCFormat()}] -> 誤差: {offset_seconds} 秒')
+
+        
+    @app_commands.command()
+    async def calc_arrival(self, ctx, start_time: str, march_time: str):
+        channel = self.bot.get_channel(ctx.channel_id)
+        marchTime = NormalizedWoSTime.CreateNormalizedWoSTime(march_time, self.logger)
+        startTime = NormalizedWoSTime.CreateNormalizedWoSTime(start_time, self.logger)
+        arrivalTime = startTime + marchTime
+        self.logger.info(f'[ta_calc_arrival] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - start_time: {start_time}, march_time: {march_time} -> arrival_time: {arrivalTime.getFullUTCFormat()}')
+        await ctx.response.send_message(f'【{ctx.user.display_name}】UTC[{startTime.getFullUTCFormat()}] + 行軍時間[{marchTime.getFullUTCFormat()}] -> 到着予定時刻: {arrivalTime.getFullUTCFormat()}')
+
     
     @app_commands.command()
     async def ta_create(self, ctx, time: str):
@@ -62,7 +75,7 @@ class TAManagerCog(commands.Cog):
         self.logger.info(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, time: {time}')
         await ctx.response.send_message(f'【TA参加】{ctx.user.display_name} が TAID: {ta_id} に参加しました')
 
-    
+
     @app_commands.command()
     async def ta_decide(self, ctx, ta_id: int, start_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
