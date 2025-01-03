@@ -16,15 +16,6 @@ class NormalizedWoSTime:
         'HHcMMcSS': re.compile(r'^([0-2][0-9]):([0-5][0-9]):([0-5][0-9])$')
     }
     
-    @staticmethod
-    def CreateNormalizedWoSTime(time: str, logger: logging.Logger = None):
-        normalizedTime = NormalizedWoSTime(time, logger)
-        return normalizedTime or None
-    
-    @staticmethod
-    def BuildTimeStringFromSeconds(seconds: int):
-        return f'{str(seconds // 3600).zfill(2)}:{str(seconds // 60 % 60).zfill(2)}:{str(seconds % 60).zfill(2)}'
-    
     def __init__(self, time: str, logger: logging.Logger = None):
         self.srcTime = time
         self.logger = logger
@@ -139,11 +130,22 @@ class NormalizedWoSTime:
     def __add__(self, other):
         if not isinstance(other, NormalizedWoSTime):
             raise ValueError('Invalid operand type')
-        timeStr = NormalizedWoSTime.BuildTimeStringFromSeconds(self.convertToSeconds() + other.convertToSeconds())
-        return NormalizedWoSTime.CreateNormalizedWoSTime(timeStr, self.logger)
+        timeStr = BuildTimeStringFromSeconds(self.convertToSeconds() + other.convertToSeconds())
+        return CreateNormalizedWoSTime(timeStr, self.logger)
 
     def __sub__(self, other):
         if not isinstance(other, NormalizedWoSTime):
             raise ValueError('Invalid operand type')
-        timeStr = NormalizedWoSTime.BuildTimeStringFromSeconds(self.convertToSeconds() - other.convertToSeconds())
-        return NormalizedWoSTime.CreateNormalizedWoSTime(timeStr, self.logger)
+        timeStr = BuildTimeStringFromSeconds(self.convertToSeconds() - other.convertToSeconds())
+        return CreateNormalizedWoSTime(timeStr, self.logger)
+
+def CreateNormalizedWoSTime(time: str, logger: logging.Logger = None):
+    normalizedTime = NormalizedWoSTime(time, logger)
+    return normalizedTime or None
+
+def CreateNormalizedWoSTimeFromSeconds(seconds: int, logger: logging.Logger = None):
+    timeStr = BuildTimeStringFromSeconds(seconds)
+    return CreateNormalizedWoSTime(timeStr, logger)
+
+def BuildTimeStringFromSeconds(seconds: int):
+    return f'{str(seconds // 3600).zfill(2)}:{str(seconds // 60 % 60).zfill(2)}:{str(seconds % 60).zfill(2)}'
