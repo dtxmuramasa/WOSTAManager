@@ -13,7 +13,20 @@ class NormalizedWoSTime:
         'HMMSS':    re.compile(r'^([0-9])([0-5][0-9])([0-5][0-9])$'),
         'HHMMSS':   re.compile(r'^([0-2][0-9])([0-5][0-9])([0-5][0-9])$'),
         'HcMMcSS':  re.compile(r'^([0-9]):([0-5][0-9]):([0-5][0-9])$'),
-        'HHcMMcSS': re.compile(r'^([0-2][0-9]):([0-5][0-9]):([0-5][0-9])$')
+        'HHcMMcSS': re.compile(r'^([0-2][0-9]):([0-5][0-9]):([0-5][0-9])$'),
+    }
+    
+    TIME_FORMAT_MIN = {
+        'minS':        re.compile(r'^(-)([0-9])$'),
+        'minSS':       re.compile(r'^(-)([0-5][0-9])$'),
+        'minMSS':      re.compile(r'^(-)([0-9])([0-5][0-9])$'),
+        'minMMSS':     re.compile(r'^(-)([0-5][0-9])([0-5][0-9])$'),
+        'minMcSS':     re.compile(r'^(-)([0-9]):([0-5][0-9])$'),
+        'minMMcSS':    re.compile(r'^(-)([0-5][0-9]):([0-5][0-9])$'),
+        'minHMMSS':    re.compile(r'^(-)([0-9])([0-5][0-9])([0-5][0-9])$'),
+        'minHHMMSS':   re.compile(r'^(-)([0-2][0-9])([0-5][0-9])([0-5][0-9])$'),
+        'minHcMMcSS':  re.compile(r'^(-)([0-9]):([0-5][0-9]):([0-5][0-9])$'),
+        'minHHcMMcSS': re.compile(r'^(-)([0-2][0-9]):([0-5][0-9]):([0-5][0-9])$')
     }
     
     def __init__(self, time: str, logger: logging.Logger = None):
@@ -25,6 +38,7 @@ class NormalizedWoSTime:
             self.logError(f'Invalid time format: {time}')
             raise ValueError(f'Invalid time format: {time}')
         
+        self.isMinus = NormalizedWoSTime.isMinusType(time)
         self.hour = self.getHourFromString()
         self.minutes = self.getMinutesFromString()
         self.seconds = self.getSecondsFromString()
@@ -47,7 +61,14 @@ class NormalizedWoSTime:
         for formatType, formatPattern in NormalizedWoSTime.TIME_FORMAT.items():
             if formatPattern.match(time):
                 return formatType
+        for formatType, formatPattern in NormalizedWoSTime.TIME_FORMAT_MIN.items():
+            if formatPattern.match(time):
+                return formatType
         return None
+    
+    @staticmethod
+    def isMinusType(time: str) -> bool:
+        return time.startswith('-')
     
     def getHourFromString(self) -> int:
         hour = None
@@ -71,6 +92,26 @@ class NormalizedWoSTime:
             hour = int(self.srcTime[0])
         elif self.srcTimeFormat == 'HHcMMcSS':
             hour = int(self.srcTime[0:2])
+        elif self.srcTimeFormat == 'minS':
+            hour = 0
+        elif self.srcTimeFormat == 'minSS':
+            hour = 0
+        elif self.srcTimeFormat == 'minMSS':
+            hour = 0
+        elif self.srcTimeFormat == 'minMMSS':
+            hour = 0
+        elif self.srcTimeFormat == 'minMcSS':
+            hour = 0
+        elif self.srcTimeFormat == 'minMMcSS':
+            hour = 0
+        elif self.srcTimeFormat == 'minHMMSS':
+            hour = int(self.srcTime[1])
+        elif self.srcTimeFormat == 'minHHMMSS':
+            hour = int(self.srcTime[1:3])
+        elif self.srcTimeFormat == 'minHcMMcSS':
+            hour = int(self.srcTime[1])
+        elif self.srcTimeFormat == 'minHHcMMcSS':
+            hour = int(self.srcTime[1:3])
         return hour if hour != None and hour >= 0 and hour <= 23 else None
     
     def getMinutesFromString(self) -> int:
@@ -95,6 +136,26 @@ class NormalizedWoSTime:
             min = int(self.srcTime[2:4])
         elif self.srcTimeFormat == 'HHcMMcSS':
             min = int(self.srcTime[3:5])
+        elif self.srcTimeFormat == 'minS':
+            min = 0
+        elif self.srcTimeFormat == 'minSS':
+            min = 0
+        elif self.srcTimeFormat == 'minMSS':
+            min = int(self.srcTime[2])
+        elif self.srcTimeFormat == 'minMMSS':
+            min = int(self.srcTime[2:4])
+        elif self.srcTimeFormat == 'minMcSS':
+            min = int(self.srcTime[2])
+        elif self.srcTimeFormat == 'minMMcSS':
+            min = int(self.srcTime[2:4])
+        elif self.srcTimeFormat == 'minHMMSS':
+            min = int(self.srcTime[1:3])
+        elif self.srcTimeFormat == 'minHHMMSS':
+            min = int(self.srcTime[3:5])
+        elif self.srcTimeFormat == 'minHcMMcSS':
+            min = int(self.srcTime[3:5])
+        elif self.srcTimeFormat == 'minHHcMMcSS':
+            min = int(self.srcTime[4:6])
         return min if min != None and min >= 0 and min <= 59 else None
     
     def getSecondsFromString(self) -> int:
@@ -119,13 +180,35 @@ class NormalizedWoSTime:
             sec = int(self.srcTime[5:])
         elif self.srcTimeFormat == 'HHcMMcSS':
             sec = int(self.srcTime[6:])
+        elif self.srcTimeFormat == 'minS':
+            sec = int(self.srcTime[2])
+        elif self.srcTimeFormat == 'minSS':
+            sec = int(self.srcTime[3])
+        elif self.srcTimeFormat == 'minMSS':
+            sec = int(self.srcTime[3:])
+        elif self.srcTimeFormat == 'minMMSS':
+            sec = int(self.srcTime[4:])
+        elif self.srcTimeFormat == 'minMcSS':
+            sec = int(self.srcTime[4:])
+        elif self.srcTimeFormat == 'minMMcSS':
+            sec = int(self.srcTime[5:])
+        elif self.srcTimeFormat == 'minHMMSS':
+            sec = int(self.srcTime[4:])
+        elif self.srcTimeFormat == 'minHHMMSS':
+            sec = int(self.srcTime[5:])
+        elif self.srcTimeFormat == 'minHcMMcSS':
+            sec = int(self.srcTime[6:])
+        elif self.srcTimeFormat == 'minHHcMMcSS':
+            sec = int(self.srcTime[7:])
         return sec if sec != None and sec >= 0 and sec <= 59 else None
     
     def convertToSeconds(self) -> int:
-        return self.hour * 3600 + self.minutes * 60 + self.seconds
+        totalSeconds = self.hour * 3600 + self.minutes * 60 + self.seconds
+        return totalSeconds if not self.isMinus else -totalSeconds
     
     def getFullUTCFormat(self) -> str:
-        return f'{str(self.hour).zfill(2)}:{str(self.minutes).zfill(2)}:{str(self.seconds).zfill(2)}'
+        utcFormat = f'{str(self.hour).zfill(2)}:{str(self.minutes).zfill(2)}:{str(self.seconds).zfill(2)}'
+        return utcFormat if not self.isMinus else f'-{utcFormat}'
 
     def __add__(self, other):
         if not isinstance(other, NormalizedWoSTime):
@@ -148,4 +231,6 @@ def CreateNormalizedWoSTimeFromSeconds(seconds: int, logger: logging.Logger = No
     return CreateNormalizedWoSTime(timeStr, logger)
 
 def BuildTimeStringFromSeconds(seconds: int):
-    return f'{str(seconds // 3600).zfill(2)}:{str(seconds // 60 % 60).zfill(2)}:{str(seconds % 60).zfill(2)}'
+    abs_seconds = abs(seconds)
+    abs_seconds_str = f'{str(abs_seconds // 3600).zfill(2)}:{str(abs_seconds // 60 % 60).zfill(2)}:{str(abs_seconds % 60).zfill(2)}'
+    return abs_seconds_str if seconds >= 0 else f'-{abs_seconds_str}'

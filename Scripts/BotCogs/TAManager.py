@@ -1,10 +1,9 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from datetime import datetime, timedelta
 import logging
-import TADB
-import NormalizedWoSTime
+from Models import TADB
+from Models import NormalizedWoSTime
 
 
 class TAManagerCog(commands.Cog):

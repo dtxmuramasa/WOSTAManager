@@ -1,4 +1,4 @@
-import NormalizedWoSTime
+from Models import NormalizedWoSTime
 
 ## Logging
 import logging
@@ -27,8 +27,6 @@ testCases = [
     '1', '12', '123', '1:23', '1234', '12:34', '12345', '1:23:45', '123456', '12:34:56',
     '9', '60', '960', '9:60', '6060', '60:60', '96060', '9:60:60', '246060', '24:60:60'
 ]
-
-import NormalizedWoSTime
 
 before = NormalizedWoSTime.CreateNormalizedWoSTime('0', logger)
 for testCase in testCases:

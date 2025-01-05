@@ -1,6 +1,9 @@
 import os
 from dotenv import load_dotenv
-load_dotenv('.env')
+from os.path import join, dirname
+
+dotenv_path = join(dirname(__file__), '.env')
+load_dotenv(dotenv_path)
 _DISCORD_TOKEN_ = os.environ.get('DISCORD_TOKEN')
 
 
@@ -18,7 +21,7 @@ logger.setLevel(logging.DEBUG)
 logging.getLogger('discord.http').setLevel(logging.INFO)
 
 logHandler = logging.handlers.RotatingFileHandler(
-        filename='discord.log',
+        filename='log/discord.log',
         encoding='utf-8',
         mode='w',
         maxBytes=32 * 1024 * 1024, # 32MB
@@ -35,7 +38,7 @@ logger.addHandler(logHandler)
 
 
 ## Database
-import TADB
+from Models import TADB
 tadb = TADB.TADatabase(logger)
 
 
@@ -44,18 +47,16 @@ import discord
 from discord.ext import commands
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-import TAManager
-import CrazyDice
-import Omikuji
-import VCSupport
-from ViewTest import ViewTestCog
+from BotCogs import TAManager
+from BotCogs import CrazyDice
+from BotCogs import Omikuji
+from BotCogs import VCSupport
 @bot.event
 async def setup_hook():
     await bot.add_cog(TAManager.TAManagerCog(bot, tadb, logger))
     await bot.add_cog(CrazyDice.CrazyDiceCog(bot, logger))
     await bot.add_cog(VCSupport.VCSupportCog(bot, logger))
     await bot.add_cog(Omikuji.OmikujiCog(bot, logger))
-    await bot.add_cog(ViewTestCog(bot, logger))
     await bot.tree.sync()
 
 @bot.event
