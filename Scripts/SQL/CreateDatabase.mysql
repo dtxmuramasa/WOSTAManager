@@ -1,0 +1,31 @@
+CREATE DATABASE WOSTAManager;
+USE WOSTAManager;
+
+CREATE TABLE DiscordServerInfo (
+    record_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    discord_sv_id       BIGINT UNSIGNED NOT NULL,
+    register_datetime   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (record_id)
+) ENGINE=InnoDB DEFAULT CHARSETutf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE WOSServerInfo (
+    record_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    wos_sv_id           SMALLINT UNSIGNED NOT NULL,
+    register_datetime   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (record_id)
+) ENGINE=InnoDB DEFAULT CHARSETutf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE ServerLinkTable(
+    record_id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    discord_sv_id       BIGINT UNSIGNED NOT NULL UNIQUE,
+    wos_sv_id           SMALLINT UNSIGNED NOT NULL,
+    register_datetime   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (record_id),
+    INDEX server_link_discord_sv_id (discord_sv_id),
+        FOREIGN KEY (discord_sv_id)
+            PREFERENCES DiscordServerInfo(discord_sv_id) ON DELETE CASCADE,
+    INDEX server_link_wos_sv_id (wos_sv_id),
+        FOREIGN KEY (wos_sv_id)
+            PREFERENCES WOSServerInfo(wos_sv_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSETutf8mb4 COLLATE=utf8mb4_general_ci;
+
