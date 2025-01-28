@@ -4,7 +4,7 @@ from discord.ext import commands
 import logging
 from Models import TADB
 from Models import NormalizedWoSTime
-
+from typing import Union
 
 class TAManagerCog(commands.Cog):
     def __init__(self, bot: commands.Bot, tadb: TADB.TADatabase, logger: logging.Logger):
@@ -87,8 +87,8 @@ class TAManagerCog(commands.Cog):
 
 
     @app_commands.command()
-    async def ta_invite(self, ctx, ta_id: int, user_id: str, time: str):
-        user_id = int(user_id)
+    async def ta_invite(self, ctx, ta_id: int, user: Union[discord.User, discord.Member], time: str):
+        user_id = user.id
         channel = self.bot.get_channel(ctx.channel_id)
         normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(time, self.logger)
         if not self.tadb.IsExistTA(ta_id):
@@ -98,7 +98,7 @@ class TAManagerCog(commands.Cog):
         
         self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, user_id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_proxy_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, user_id: {user_id}, time: {time}')
-        await ctx.response.send_message(f'【TA招集】{self.getUserDisplayName(user_id)} が {ctx.user.display_name} によって TAID: {ta_id} に招集されました')
+        await ctx.response.send_message(f'【TA招集】{user.display_name} が {ctx.user.display_name} によって TAID: {ta_id} に招集されました')
 
 
     @app_commands.command()
@@ -115,8 +115,8 @@ class TAManagerCog(commands.Cog):
 
 
     @app_commands.command()
-    async def ta_kick(self, ctx, ta_id: int, user_id: str):
-        user_id = int(user_id)
+    async def ta_kick(self, ctx, ta_id: int, user: Union[discord.User, discord.Member]):
+        user_id = user.id
         channel = self.bot.get_channel(ctx.channel_id)
         if not self.tadb.IsExistTA(ta_id):
             self.logger.warning(f'[ta_kick] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
