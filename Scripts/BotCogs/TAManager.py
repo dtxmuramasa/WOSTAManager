@@ -76,7 +76,7 @@ class TAManagerCog(commands.Cog):
     async def ta_join(self, ctx, ta_id: int, time: str):
         channel = self.bot.get_channel(ctx.channel_id)
         normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(time, self.logger)
-        if self.tadb.IsExistTA(ta_id) is None:
+        if not self.tadb.IsExistTA(ta_id):
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
@@ -87,10 +87,51 @@ class TAManagerCog(commands.Cog):
 
 
     @app_commands.command()
+    async def ta_invite(self, ctx, ta_id: int, user_id: str, time: str):
+        user_id = int(user_id)
+        channel = self.bot.get_channel(ctx.channel_id)
+        normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(time, self.logger)
+        if not self.tadb.IsExistTA(ta_id):
+            self.logger.warning(f'[ta_proxy_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
+            await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
+            return
+        
+        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, user_id, normalizedTime.convertToSeconds())
+        self.logger.info(f'[ta_proxy_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, user_id: {user_id}, time: {time}')
+        await ctx.response.send_message(f'【TA招集】{self.getUserDisplayName(user_id)} が {ctx.user.display_name} によって TAID: {ta_id} に招集されました')
+
+
+    @app_commands.command()
+    async def ta_leave(self, ctx, ta_id: int):
+        channel = self.bot.get_channel(ctx.channel_id)
+        if not self.tadb.IsExistTA(ta_id):
+            self.logger.warning(f'[ta_leave] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
+            await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
+            return
+
+        self.tadb.LeaveTA(ta_id, ctx.guild.id, channel.id, ctx.user.id)
+        self.logger.info(f'[ta_leave] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}')
+        await ctx.response.send_message(f'【TA離脱】{ctx.user.display_name} が TAID: {ta_id} から離脱しました')
+
+
+    @app_commands.command()
+    async def ta_kick(self, ctx, ta_id: int, user_id: str):
+        user_id = int(user_id)
+        channel = self.bot.get_channel(ctx.channel_id)
+        if not self.tadb.IsExistTA(ta_id):
+            self.logger.warning(f'[ta_kick] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
+            await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
+            return
+        
+        self.tadb.LeaveTA(ta_id, ctx.guild.id, channel.id, user_id)
+        self.logger.info(f'[ta_kick] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, user_id: {user_id}')
+        await ctx.response.send_message(f'【TAキック】{self.getUserDisplayName(user_id)} が {ctx.user.display_name} によって TAID: {ta_id} からキックされました')
+
+
+    @app_commands.command()
     async def ta_decide(self, ctx, ta_id: int, start_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
-
-        if self.tadb.IsExistTA(ta_id) is None:
+        if not self.tadb.IsExistTA(ta_id):
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
@@ -117,6 +158,20 @@ class TAManagerCog(commands.Cog):
         
         await ctx.response.send_message(f'【TAクローズ】TAID: {ta_id} が {ctx.user.display_name} によってクローズされました')
         self.logger.info(f'[ta_decide - finalize:0] TAID: {ta_id} is finalized')
+    
+    
+    @app_commands.command()
+    async def ta_cancel(self, ctx, ta_id: int):
+        channel = self.bot.get_channel(ctx.channel_id)
+        if not self.tadb.IsExistTA(ta_id):
+            self.logger.warning(f'[ta_cancel] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
+            await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
+            return
+        
+        ta = self.tadb.CloseTA(ta_id)
+        self.logger.info(f'[ta_cancel] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}')
+        await ctx.response.send_message(f'【TAキャンセル】TAID: {ta_id} が {ctx.user.display_name} によってキャンセルされました')
+        self.logger.info(f'[ta_cancel - finalize:0] TAID: {ta_id} is finalized')
 
 
 class TAManager_JoinButtonView(discord.ui.View):
