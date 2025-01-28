@@ -49,6 +49,17 @@ class TAManagerCog(commands.Cog):
         self.logger.info(f'[ta_calc_arrival] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - start_time: {start_time}, march_time: {march_time} -> arrival_time: {arrivalTime.getFullUTCFormat()}')
         await ctx.response.send_message(f'【{ctx.user.display_name}】UTC[{startTime.getFullUTCFormat()}] + 行軍時間[{marchTime.getFullUTCFormat()}] -> 到着予定時刻: {arrivalTime.getFullUTCFormat()}')
 
+
+    @app_commands.command()
+    async def calc_start_timing(self, ctx, target_time: str, march_time: str, prepare_time: str = '500'):
+        channel = self.bot.get_channel(ctx.channel_id)
+        marchTime = NormalizedWoSTime.CreateNormalizedWoSTime(march_time, self.logger)
+        targetTime = NormalizedWoSTime.CreateNormalizedWoSTime(target_time, self.logger)
+        prepareTime = NormalizedWoSTime.CreateNormalizedWoSTime(prepare_time, self.logger)
+        startTime = targetTime - marchTime - prepareTime
+        self.logger.info(f'[ta_calc_stat_timing] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - target_time: {target_time}, march_time: {march_time}, prepare_time: {prepare_time} -> start_time: {startTime.getFullUTCFormat()}')
+        await ctx.response.send_message(f'【{ctx.user.display_name}】行軍開始時刻 UTC[{startTime.getFullUTCFormat()}] 集結時間[{prepareTime.getMinutesFromString()} 分] - 行軍時間[{marchTime.getFullUTCFormat()}] -> 到達時刻: UTC[{targetTime.getFullUTCFormat()}]')
+
     
     @app_commands.command()
     async def ta_create(self, ctx, time: str):
