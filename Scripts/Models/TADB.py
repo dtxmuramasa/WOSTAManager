@@ -42,6 +42,11 @@ class TADatabase:
         key = self.MakePrefix(server_id, channel_id, user_id)
         self.redis_cli.hset(f'ta:{ta_id}', key, time)
         self.logger.info(f'[TADatabase.JoinTA] TAID: {ta_id}, key: {key}, time: {time}')
+        
+    def LeaveTA(self, ta_id: int, server_id: str, channel_id: str, user_id: int):
+        key = self.MakePrefix(server_id, channel_id, user_id)
+        self.redis_cli.hdel(f'ta:{ta_id}', key)
+        self.logger.info(f'[TADatabase.LeaveTA] TAID: {ta_id}, key: {key}')
 
     def CloseTA(self, ta_id: int):
         _ta_joiners = self.redis_cli.hgetall(f'ta:{ta_id}')

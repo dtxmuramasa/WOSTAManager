@@ -3,6 +3,8 @@ import re
 import logging
 
 class NormalizedWoSTime:
+    ALLOW_FORMAT = '【(入力内容)->(解釈結果)】35->00:00:35 / 204->00:02:04 / 235959->23:59:59 / 23:59:59->23:59:59'
+    
     TIME_FORMAT = {
         'S':        re.compile(r'^([0-9])$'),
         'SS':       re.compile(r'^([0-5][0-9])$'),
