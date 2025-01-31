@@ -140,7 +140,7 @@ class TAManagerCog(commands.Cog):
 
     @app_commands.command(description='連集結の参加者を確定し、参加者に集結開始時刻を通知します')
     @app_commands.describe(ta_id='確定する連集結のTAID', start_time=f'連集結開始時刻 {ALLOW_TIME_FORMAT}')
-    async def ta_decide(self, ctx, ta_id: int, start_time: str):
+    async def ta_decide(self, ctx, ta_id: int, start_time: str, is_close_ta: bool = False):
         channel = self.bot.get_channel(ctx.channel_id)
         if not self.tadb.IsExistTA(ta_id):
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
@@ -150,7 +150,7 @@ class TAManagerCog(commands.Cog):
         normalizedStartTime = NormalizedWoSTime.CreateNormalizedWoSTime(start_time, self.logger)
         starter_start_utc = normalizedStartTime.getFullUTCFormat()
         
-        ta = self.tadb.CloseTA(ta_id)
+        ta = self.tadb.GetTAJoiners(ta_id) if not is_close_ta else self.tadb.CloseTA(ta_id)
         sorted_ta = sorted(ta.items(), key = lambda x: x[1], reverse=True)
         starter = sorted_ta.pop(0)
 
@@ -167,8 +167,11 @@ class TAManagerCog(commands.Cog):
             self.logger.info(f'[ta_decide - TAID: {ta_id} joiner] {user_display_name}({user_id}) march_time: {march_time} sec, start at {joiner_start_utc}')
             await channel.send(f'【TAID: {ta_id} - 参加者】{user_mention_name} **{joiner_start_utc} スタート** (元の行軍時間: {march_time} 秒)', allowed_mentions=discord.AllowedMentions.all(), mention_author=True)
         
-        await ctx.response.send_message(f'【TAクローズ】TAID: {ta_id} が {ctx.user.display_name} によってクローズされました')
-        self.logger.info(f'[ta_decide - finalize:0] TAID: {ta_id} is finalized')
+        if is_close_ta:
+            await ctx.response.send_message(f'【TAクローズ】TAID: {ta_id} が {ctx.user.display_name} によってクローズされました')
+        else:
+            await ctx.response.send_message(f'【TA未解散】TAID: **{ta_id}** は継続利用が可能です')
+        self.logger.info(f'[ta_decide - finalize] TAID: {ta_id} is finalized')
     
     
     @app_commands.command(description='連集結を解散します')

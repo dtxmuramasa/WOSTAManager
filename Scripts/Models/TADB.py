@@ -47,13 +47,18 @@ class TADatabase:
         key = self.MakePrefix(server_id, channel_id, user_id)
         self.redis_cli.hdel(f'ta:{ta_id}', key)
         self.logger.info(f'[TADatabase.LeaveTA] TAID: {ta_id}, key: {key}')
-
-    def CloseTA(self, ta_id: int):
+        
+    def GetTAJoiners(self, ta_id: int):
         _ta_joiners = self.redis_cli.hgetall(f'ta:{ta_id}')
         ta_joiners = {}
         for key, time in _ta_joiners.items():
             user_id = int(self.GetUserIdFromKey(key.decode('utf-8')))
             ta_joiners[user_id] = int(time)
+        self.logger.info(f'[TADatabase.GetTAJoiners] TAID: {ta_id}, joiners: {ta_joiners}')
+        return ta_joiners
+
+    def CloseTA(self, ta_id: int):
+        ta_joiners = self.GetTAJoiners(ta_id)
         self.redis_cli.delete(f'ta:{ta_id}')
         self.logger.info(f'[TADatabase.CloseTA] TAID: {ta_id}, joiners: {ta_joiners}')
         return ta_joiners
