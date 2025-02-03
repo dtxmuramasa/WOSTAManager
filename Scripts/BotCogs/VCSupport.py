@@ -38,7 +38,7 @@ class VCSupportCog(commands.Cog):
         finally:
             return True
     
-    @app_commands.command()
+    @app_commands.command(description='ボイスチャンネルのステータスを設定します')
     async def vcs_setstatus(self, ctx, text: str):
         server = self.bot.get_guild(ctx.guild_id)
         channel = self.bot.get_channel(ctx.channel_id)
