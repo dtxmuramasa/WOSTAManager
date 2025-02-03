@@ -24,7 +24,6 @@ class VCSupportCog(commands.Cog):
             self.vcs_admin_roles.append(int(role_id))
         for role_id in os.environ.get('VCS_SV1697_ADMIN_ROLES').split(','):
             self.vcs_admin_roles.append(int(role_id))
-        print(self.vcs_admin_roles)
     
     @commands.Cog.listener()
     async def on_ready(self):
