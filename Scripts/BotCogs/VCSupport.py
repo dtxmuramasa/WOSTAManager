@@ -18,8 +18,13 @@ class VCSupportCog(commands.Cog):
         self.logger = logger
         load_dotenv('.env')
         self.vcs_admin_roles = []
-        for role_id in os.environ.get('VCS_ADMIN_ROLES').split(','):
+        for role_id in os.environ.get('VCS_LRR_ADMIN_ROLES').split(','):
             self.vcs_admin_roles.append(int(role_id))
+        for role_id in os.environ.get('VCS_KFC_ADMIN_ROLES').split(','):
+            self.vcs_admin_roles.append(int(role_id))
+        for role_id in os.environ.get('VCS_SV1697_ADMIN_ROLES').split(','):
+            self.vcs_admin_roles.append(int(role_id))
+        print(self.vcs_admin_roles)
     
     @commands.Cog.listener()
     async def on_ready(self):
