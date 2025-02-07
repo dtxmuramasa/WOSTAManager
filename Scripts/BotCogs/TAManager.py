@@ -71,7 +71,7 @@ class TAManagerCog(commands.Cog):
     async def ta_create(self, ctx, march_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
         normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(march_time, self.logger)
-        newId = self.tadb.CreateTA(ctx.guild.id, ctx.channel_id, ctx.user.id, normalizedTime.convertToSeconds())
+        newId = self.tadb.CreateTA(ctx.guild.id, ctx.user.id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_create](TAID: {newId}) called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - march_time: {march_time}')
         # view = TAManager_JoinButtonView(timeout=180, logger=self.logger, taManager=self, taid=newId)
         # await ctx.response.send_message(f'【TA発起】{ctx.user.display_name} が TAID: {newId} を発起しました', view=view)
@@ -83,12 +83,12 @@ class TAManagerCog(commands.Cog):
     async def ta_join(self, ctx, ta_id: int, march_time: str):
         channel = self.bot.get_channel(ctx.channel_id)
         normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(march_time, self.logger)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, ctx.user.id, normalizedTime.convertToSeconds())
+        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.user.id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, march_time: {march_time}')
         await ctx.response.send_message(f'【TA参加】{ctx.user.display_name} が TAID: {ta_id} に参加しました')
 
@@ -99,12 +99,12 @@ class TAManagerCog(commands.Cog):
         user_id = user.id
         channel = self.bot.get_channel(ctx.channel_id)
         normalizedTime = NormalizedWoSTime.CreateNormalizedWoSTime(march_time, self.logger)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_proxy_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.tadb.JoinTA(ta_id, ctx.guild.id, ctx.channel_id, user_id, normalizedTime.convertToSeconds())
+        self.tadb.JoinTA(ta_id, ctx.guild.id, user_id, normalizedTime.convertToSeconds())
         self.logger.info(f'[ta_proxy_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, user_id: {user_id}, march_time: {march_time}')
         await ctx.response.send_message(f'【TA招集】{user.display_name} が {ctx.user.display_name} によって TAID: {ta_id} に招集されました')
 
@@ -113,12 +113,12 @@ class TAManagerCog(commands.Cog):
     @app_commands.describe(ta_id='離脱する連集結のTAID')
     async def ta_leave(self, ctx, ta_id: int):
         channel = self.bot.get_channel(ctx.channel_id)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_leave] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
 
-        self.tadb.LeaveTA(ta_id, ctx.guild.id, channel.id, ctx.user.id)
+        self.tadb.LeaveTA(ta_id, ctx.guild.id, ctx.user.id)
         self.logger.info(f'[ta_leave] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}')
         await ctx.response.send_message(f'【TA離脱】{ctx.user.display_name} が TAID: {ta_id} から離脱しました')
 
@@ -128,12 +128,12 @@ class TAManagerCog(commands.Cog):
     async def ta_kick(self, ctx, ta_id: int, user: Union[discord.User, discord.Member]):
         user_id = user.id
         channel = self.bot.get_channel(ctx.channel_id)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_kick] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.tadb.LeaveTA(ta_id, ctx.guild.id, channel.id, user_id)
+        self.tadb.LeaveTA(ta_id, ctx.guild.id, user_id)
         self.logger.info(f'[ta_kick] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}, user_id: {user_id}')
         await ctx.response.send_message(f'【TAキック】{self.getUserDisplayName(user_id)} が {ctx.user.display_name} によって TAID: {ta_id} からキックされました')
 
@@ -142,7 +142,7 @@ class TAManagerCog(commands.Cog):
     @app_commands.describe(ta_id='確定する連集結のTAID', start_time=f'連集結開始時刻 {ALLOW_TIME_FORMAT}')
     async def ta_decide(self, ctx, ta_id: int, start_time: str, is_close_ta: bool = False):
         channel = self.bot.get_channel(ctx.channel_id)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_join] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
@@ -150,7 +150,7 @@ class TAManagerCog(commands.Cog):
         normalizedStartTime = NormalizedWoSTime.CreateNormalizedWoSTime(start_time, self.logger)
         starter_start_utc = normalizedStartTime.getFullUTCFormat()
         
-        ta = self.tadb.GetTAJoiners(ta_id) if not is_close_ta else self.tadb.CloseTA(ta_id)
+        ta = self.tadb.GetTAJoiners(ta_id, ctx.guild.id) if not is_close_ta else self.tadb.CloseTA(ta_id, ctx.guild.id)
         sorted_ta = sorted(ta.items(), key = lambda x: x[1], reverse=True)
         starter = sorted_ta.pop(0)
 
@@ -178,12 +178,12 @@ class TAManagerCog(commands.Cog):
     @app_commands.describe(ta_id='解散する連集結のTAID')
     async def ta_cancel(self, ctx, ta_id: int):
         channel = self.bot.get_channel(ctx.channel_id)
-        if not self.tadb.IsExistTA(ta_id):
+        if not self.tadb.IsExistTA(ta_id, ctx.guild.id):
             self.logger.warning(f'[ta_cancel] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) TA not found: {ta_id}')
             await ctx.response.send_message(f'TAが見つかりません: {ta_id}')
             return
         
-        self.tadb.CloseTA(ta_id)
+        self.tadb.CloseTA(ta_id, ctx.guild.id)
         self.logger.info(f'[ta_cancel] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) - TAID: {ta_id}')
         await ctx.response.send_message(f'【TAキャンセル】TAID: {ta_id} が {ctx.user.display_name} によってキャンセルされました')
         self.logger.info(f'[ta_cancel - finalize:0] TAID: {ta_id} is finalized')

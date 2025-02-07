@@ -11,7 +11,6 @@ class TADatabase:
             db = redis_settings.DB_ID
         )
         self.logger = logger
-        self.redis_cli.rpush('generated_taids', 0)
     
     def set(self, key, value):
         self.redis_cli.set(key, value)
@@ -22,44 +21,65 @@ class TADatabase:
         self.logger.info(f'[TADatabase.get] key: {key}, value: {value}')
         return value
     
-    def MakePrefix(self, server_id: str, channel_id: str, user_id: int):
-        return f'sv:{server_id},ch:{channel_id},uid:{user_id}'
+    def GetLatestTAID(self, server_id: str):
+        key_prefix = self.MakePrefix(server_id)
+        if not self.redis_cli.exists(key_prefix):
+            self.redis_cli.hset(key_prefix, "latest_taid", 0)
+        return int(self.redis_cli.hget(key_prefix, "latest_taid"))
     
-    def GetUserIdFromKey(self, key: str):
-        return key.split(',')[2].split(':')[1].strip()
+    def MakePrefixWithTAID(self, server_id: str, ta_id: int):
+        return f'{self.MakePrefix(server_id)},taid:{ta_id}'
     
-    def IsExistTA(self, ta_id: int):
-        return self.redis_cli.exists(f'ta:{ta_id}')
+    def MakePrefix(self, server_id: str):
+        return f'sv:{server_id}'
     
-    def CreateTA(self, server_id: str, channel_id: str, user_id: int, time: int):
-        new_taid = int(self.redis_cli.rpop('generated_taids')) + 1
-        self.redis_cli.rpush('generated_taids', new_taid)
+    def IsExistsMarchingData(self, server_id: str, ta_id: int, user_id: int):
+        return True if self.GetMarchingData(server_id, ta_id, user_id) else False
+    
+    def GetMarchingData(self, server_id: str, ta_id: int, user_id: int):
+        key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
+        return self.redis_cli.hget(key_prefix, user_id)
+    
+    def IsExistTA(self, ta_id: int, server_id: str):
+        return self.redis_cli.exists(self.MakePrefixWithTAID(server_id, ta_id))
+    
+    def CreateTA(self, server_id: str, user_id: int, time: int):
+        key_prefix = self.MakePrefix(server_id)
+        new_taid = self.GetLatestTAID(server_id) + 1
+        self.redis_cli.hset(key_prefix, "latest_taid", new_taid)
         self.logger.info(f'[TADatabase.CreateTA] New TAID: {new_taid}')
-        self.JoinTA(new_taid, server_id, channel_id, user_id, time)
+        self.JoinTA(new_taid, server_id, user_id, time)
         return new_taid
         
-    def JoinTA(self, ta_id: int, server_id: str, channel_id: str, user_id: int, time: int):
-        key = self.MakePrefix(server_id, channel_id, user_id)
-        self.redis_cli.hset(f'ta:{ta_id}', key, time)
-        self.logger.info(f'[TADatabase.JoinTA] TAID: {ta_id}, key: {key}, time: {time}')
+    def JoinTA(self, ta_id: int, server_id: str, user_id: int, time: int):
+        key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
+        self.redis_cli.hset(key_prefix, user_id, time)
+        self.logger.info(f'[TADatabase.JoinTA] AddMarchingData key: {key_prefix}, user_id: {user_id}, time: {time}')
         
-    def LeaveTA(self, ta_id: int, server_id: str, channel_id: str, user_id: int):
-        key = self.MakePrefix(server_id, channel_id, user_id)
-        self.redis_cli.hdel(f'ta:{ta_id}', key)
-        self.logger.info(f'[TADatabase.LeaveTA] TAID: {ta_id}, key: {key}')
+    def LeaveTA(self, ta_id: int, server_id: str, user_id: int):
+        key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
+        if self.IsExistsMarchingData(server_id, ta_id, user_id):
+            self.redis_cli.hdel(key_prefix, user_id)
+            self.logger.info(f'[TADatabase.LeaveTA] RemoveMarchingData key: {key_prefix}, user_id: {user_id}')
+            return True
+        else:
+            self.logger.info(f'[TADatabase.LeaveTA] Not found user_id: {user_id} in TAID: {ta_id}')
+            return False
         
-    def GetTAJoiners(self, ta_id: int):
-        _ta_joiners = self.redis_cli.hgetall(f'ta:{ta_id}')
+    def GetTAJoiners(self, ta_id: int, server_id: str):
+        key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
+        _ta_joiners = self.redis_cli.hgetall(key_prefix)
         ta_joiners = {}
-        for key, time in _ta_joiners.items():
-            user_id = int(self.GetUserIdFromKey(key.decode('utf-8')))
+        for user_id, time in _ta_joiners.items():
+            user_id = int(user_id)
             ta_joiners[user_id] = int(time)
         self.logger.info(f'[TADatabase.GetTAJoiners] TAID: {ta_id}, joiners: {ta_joiners}')
         return ta_joiners
 
-    def CloseTA(self, ta_id: int):
-        ta_joiners = self.GetTAJoiners(ta_id)
-        self.redis_cli.delete(f'ta:{ta_id}')
-        self.logger.info(f'[TADatabase.CloseTA] TAID: {ta_id}, joiners: {ta_joiners}')
+    def CloseTA(self, ta_id: int, server_id: str):
+        key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
+        ta_joiners = self.GetTAJoiners(ta_id, server_id)
+        self.redis_cli.delete(key_prefix)
+        self.logger.info(f'[TADatabase.CloseTA] TAID: {ta_id}, server_id: {server_id} joiners: {ta_joiners}')
         return ta_joiners
 
