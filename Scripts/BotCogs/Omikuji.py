@@ -87,7 +87,7 @@ class OmikujiCog(commands.Cog):
         self.bot = bot
         self.logger = logger
         random.seed()
-        self.omikuji_results = {}
+        # self.omikuji_results = {}
     
     def getRandomUnseiId(self):
         dice = random.randrange(len(self.omikuji_map))
@@ -128,10 +128,10 @@ class OmikujiCog(commands.Cog):
     async def omikuji(self, ctx):
         channel = self.bot.get_channel(ctx.channel_id)
         
-        if ctx.user.id in self.omikuji_results.keys():
-            self.logger.info(f'[omikuji] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) -> already done')
-            await ctx.response.send_message(f'【{ctx.user.display_name}】おみくじを引きました\n\n{self.omikuji_results[ctx.user.id]}', silent=True)
-            return
+        # if ctx.user.id in self.omikuji_results.keys():
+        #     self.logger.info(f'[omikuji] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) -> already done')
+        #     await ctx.response.send_message(f'【{ctx.user.display_name}】おみくじを引きました\n\n{self.omikuji_results[ctx.user.id]}', silent=True)
+        #     return
 
         # 運勢を決める
         unsei = self.getRandomUnseiId()
@@ -144,6 +144,6 @@ class OmikujiCog(commands.Cog):
         machibito = self.getRandomMachibito()
 
         omikuji_text = f'◆{unsei}◆\n{unsei_text}\n-------------------------------------\n●願望\n{ganbo}\n●学業\n{gakugyo}\n●恋愛\n{renai}\n●健康\n{kenko}\n●旅行\n{tabi}\n●待人\n{machibito}'
-        self.omikuji_results[ctx.user.id] = omikuji_text
+        # self.omikuji_results[ctx.user.id] = omikuji_text
         self.logger.info(f'[omikuji ({unsei})] called by {ctx.user.display_name}({ctx.user.id}) on {channel.name}({channel.id}) -> {omikuji_text}')
         await ctx.response.send_message(f'【{ctx.user.display_name}】おみくじを引きました\n\n{omikuji_text}', silent=True)
