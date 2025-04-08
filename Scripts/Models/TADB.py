@@ -3,6 +3,9 @@ import redis_settings
 import logging
 import json
 
+import os
+from dotenv import load_dotenv
+
 class TADatabase:
     def __init__(self, logger: logging.Logger):
         self.redis_cli = redis.Redis(
@@ -11,6 +14,8 @@ class TADatabase:
             db = redis_settings.DB_ID
         )
         self.logger = logger
+        load_dotenv('.env')
+        self.TA_EXPIRE_TIME = int(os.environ.get('REDIS_TA_EXPIRE_TIME'))
     
     def set(self, key, value):
         self.redis_cli.set(key, value)
@@ -47,14 +52,16 @@ class TADatabase:
         key_prefix = self.MakePrefix(server_id)
         new_taid = self.GetLatestTAID(server_id) + 1
         self.redis_cli.hset(key_prefix, "latest_taid", new_taid)
-        self.logger.info(f'[TADatabase.CreateTA] New TAID: {new_taid}')
+        self.redis_cli.expire(key_prefix, self.TA_EXPIRE_TIME)
+        self.logger.info(f'[TADatabase.CreateTA] New TAID: {new_taid} (expire: {self.TA_EXPIRE_TIME})')
         self.JoinTA(new_taid, server_id, user_id, time)
         return new_taid
         
     def JoinTA(self, ta_id: int, server_id: str, user_id: int, time: int):
         key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
         self.redis_cli.hset(key_prefix, user_id, time)
-        self.logger.info(f'[TADatabase.JoinTA] AddMarchingData key: {key_prefix}, user_id: {user_id}, time: {time}')
+        self.redis_cli.expire(key_prefix, self.TA_EXPIRE_TIME)
+        self.logger.info(f'[TADatabase.JoinTA] AddMarchingData key: {key_prefix}, user_id: {user_id}, time: {time} (expire: {self.TA_EXPIRE_TIME})')
         
     def LeaveTA(self, ta_id: int, server_id: str, user_id: int):
         key_prefix = self.MakePrefixWithTAID(server_id, ta_id)
